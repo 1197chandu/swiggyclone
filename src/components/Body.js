@@ -1,6 +1,10 @@
-import Restaurant from "./Restaurant";
-import { useEffect, useState } from "react";
+import Restaurant, { withPromotedRes } from "./Restaurant";
+import { useEffect, useState, useContext } from "react";
 import ShimmerUI from "./Shimmer";
+import { RES_LIST } from "../utils/constants";
+import { Link } from "react-router-dom";
+import useOnline from "../utils/useOnline";
+import UserContext from "../utils/UserContext";
 
 const Body = () => {
   const [listOfRestaurants, setListOfRestaurants] = useState([]);
@@ -8,14 +12,16 @@ const Body = () => {
 
   const [searchText, setSearchText] = useState("");
 
+  const RestaurantWithPromoted = withPromotedRes(Restaurant);
+
+  onlineStatus = useOnline();
+
   useEffect(() => {
     fetchData();
   }, []);
 
   const fetchData = async () => {
-    const data = await fetch(
-      "https://www.swiggy.com/dapi/restaurants/list/v5?lat=12.9715987&lng=77.5945627&is-seo-homepage-enabled=true&page_type=DESKTOP_WEB_LISTING"
-    );
+    const data = await fetch(RES_LIST);
 
     const jsonData = await data.json();
 
@@ -30,14 +36,19 @@ const Body = () => {
     );
   };
 
+  if (!onlineStatus)
+    return <h1>Your offline!! Please check you internet connection!!</h1>;
+
+  const { loggedInUser, setUserName } = useContext(UserContext);
+
   return listOfRestaurants.length === 0 ? (
     <ShimmerUI />
   ) : (
     <div className="body-container">
-      <div className="filter">
-        <div className="search">
+      <div className="flex mb-9 pl-20">
+        <div className="mr-5">
           <input
-            className="serach-box"
+            className="border border-solid border-black rounded mr-2 px-2 py-1"
             type="text"
             placeholder="Search"
             value={searchText}
@@ -46,7 +57,7 @@ const Body = () => {
             }}
           />
           <button
-            className="search-btn"
+            className="px-4 py-1 bg-green-100 rounded"
             onClick={() => {
               const filteredData = listOfRestaurants.filter((res) =>
                 res.info.name
@@ -60,24 +71,47 @@ const Body = () => {
             serach
           </button>
         </div>
-        <button
-          className="filter-btn"
-          onClick={() => {
-            const filterdList = listOfRestaurants.filter(
-              (res) => res.info.avgRating > 4.4
-            );
-            setFilteredList(filterdList);
-          }}
-        >
-          Top rated restaurant
-        </button>
+        <div>
+          <button
+            className="px-4 py-1 bg-green-100 rounded"
+            onClick={() => {
+              const filterdList = listOfRestaurants.filter(
+                (res) => res.info.avgRating > 4.4
+              );
+              setFilteredList(filterdList);
+            }}
+          >
+            Top rated restaurant
+          </button>
+        </div>
+        <div className="mx-4">
+          <label>UserName:</label>
+          <input
+            className="border border-solid border-black rounded mr-2 px-2 py-1"
+            type="text"
+            placeholder="Search"
+            value={loggedInUser}
+            onChange={(e) => setUserName(e.target.value)}
+          />
+        </div>
       </div>
       {filteredList.length === 0 ? (
         <h1>No restaurant match your search </h1>
       ) : (
-        <div className="restaurant-conatiner">
+        <div className="flex flex-wrap justify-center">
           {filteredList?.map((restaurant, index) => {
-            return <Restaurant resData={restaurant} key={index} />;
+            return (
+              <Link
+                className="restro-link"
+                to={"/restaurant/" + restaurant.info.id}
+              >
+                {restaurant.info.avgRating > 4.5 ? (
+                  <RestaurantWithPromoted resData={restaurant} key={index} />
+                ) : (
+                  <Restaurant resData={restaurant} key={index} />
+                )}
+              </Link>
+            );
           })}
         </div>
       )}
